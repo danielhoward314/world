@@ -1,4 +1,5 @@
 const isDev = process.env.NODE_ENV === 'development'
+const ExtractTextPlugin = require('extract-text-webpack-plugin')
 
 module.exports = {
   mode: isDev ? 'development' : 'production',
