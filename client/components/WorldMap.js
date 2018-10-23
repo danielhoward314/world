@@ -7,46 +7,22 @@ class WorldMap extends Component {
     super(props)
     this.state = {
       w: 3000,
-      h: 1250,
+      h: 1500,
       refMounted: false
     }
     this.minZoom = null
     this.maxZoom = null
-    // this.zoom = this.zoom.bind(this)
     this.zoomed = this.zoomed.bind(this)
     this.initiateZoom = this.initiateZoom.bind(this)
     this.getTextBox = this.getTextBox.bind(this)
     this.path = this.path.bind(this)
   }
 
-  componentWillMount() {
-    d3.json(
-      "topo", function(json) {
-        console.log(json.features)
-        // draw a path for each feature/country
-        // const countries = d3.select("#map")
-        //   .selectAll("path")
-        //   .data(json.features)
-        //   .enter()
-        //   .append("path")
-        //   .attr("d", (d, i) => {
-        //     console.log(d)
-        //     return this.path(d)
-        //   })
-        //   .attr("id", function(d, i) {
-        //     console.log(`here's the d: ${d}`)
-        //     return "country" + d.properties.iso_a3;
-        //   })
-        //   .attr("class", "country")
-      }
-    )
-  }
-
   componentDidUpdate() {
     d3.zoom().on("zoom", this.zoomed)
   }
 
-  // Create function to apply zoom to countriesGroup
+  // Create function to apply zoom to <g> (group of country paths)
   zoomed() {
     let t = d3
       .event
@@ -78,6 +54,9 @@ class WorldMap extends Component {
 
   path(data) {
     let projection = d3.geoEquirectangular()
+    .center([0, 15]) // setting center further north
+    .scale([this.state.w/(2*Math.PI)]) // scale to fit group width
+    .translate([this.state.w/2,this.state.h/2]) // ensure centred in group
     let geoGenerator = d3.geoPath()
     .projection(projection)
     return geoGenerator(data)
@@ -97,46 +76,31 @@ class WorldMap extends Component {
     }
     this.initiateZoom()
 
-    // zoom to show a bounding box, with optional additional padding as percentage of box size
-    function boxZoom(box, centroid, paddingPerc) {
-      let minXY = box[0]
-      let maxXY = box[1]
-      // find size of map area defined
-      let zoomWidth = Math.abs(minXY[0] - maxXY[0])
-      let zoomHeight = Math.abs(minXY[1] - maxXY[1])
-      // find midpoint of map area defined
-      let zoomMidX = centroid[0]
-      let zoomMidY = centroid[1]
-      // increase map area to include padding
-      zoomWidth = zoomWidth * (1 + paddingPerc / 100)
-      zoomHeight = zoomHeight * (1 + paddingPerc / 100)
-      // find scale required for area to fill svg
-      let maxXscale = d3.select("svg").style("width") / zoomWidth
-      let maxYscale = d3.select("svg").style("height") / zoomHeight
-      let zoomScale = Math.min(maxXscale, maxYscale)
-      // handle some edge cases
-      // limit to max zoom (handles tiny countries)
-      zoomScale = Math.min(zoomScale, this.maxZoom)
-      // limit to min zoom (handles large countries and countries that span the date line)
-      zoomScale = Math.max(zoomScale, this.minZoom)
-      // Find screen pixel equivalent once scaled
-      let offsetX = zoomScale * zoomMidX
-      let offsetY = zoomScale * zoomMidY
-      // Find offset to centre, making sure no gap at left or top of holder
-      let dleft = Math.min(0, d3.select("svg").style("width") / 2 - offsetX)
-      let dtop = Math.min(0, d3.select("svg").style("height") / 2 - offsetY)
-      // Make sure no gap at bottom or right of holder
-      dleft = Math.max(d3.select("svg").style("width") - this.state.w * zoomScale, dleft)
-      dtop = Math.max(d3.select("svg").style("height") - this.state.h * zoomScale, dtop)
-      // set zoom
-      d3.select("map-holder")
-        .transition()
-        .duration(500)
-        .call(
-          d3.zoom().on("zoom", this.zoomed).transform,
-          d3.zoomIdentity.translate(dleft, dtop).scale(zoomScale)
-        )
-    }
+    d3.json(
+      "https://raw.githubusercontent.com/danielhoward314/world/master/public/custom.geo.json"
+    ).then((data) => {
+        d3.select("#map")
+          .selectAll("path")
+          .data(data.features)
+          .enter()
+          .append("path")
+          .attr("d", this.path)
+          .attr("id", function(d) {
+            return "country" + d.properties.iso_a3;
+          })
+          .attr("class", "country")
+          .on("mouseover", function(d, i) {
+            d3.select("#countryLabel" + d.properties.iso_a3).style("display", "block");
+        })
+        .on("mouseout", function(d, i) {
+            d3.select("#countryLabel" + d.properties.iso_a3).style("display", "none");
+        })
+        // add an onclick action to zoom into clicked country
+        .on("click", function(d, i) {
+            d3.selectAll(".country").classed("country-on", false);
+            d3.select(this).classed("country-on", true);
+        })
+    })
 
     d3.select(window).on("resize",() => {
       d3.select("#map-holder")
@@ -153,15 +117,8 @@ class WorldMap extends Component {
         <svg id="map-svg" style={{width: (this.props.width),
         height: (this.props.height),
         color: "rgba(0,0,0,0)"}}>
-          <g id="map"
-          // transform="translate(-132.092, 1.42109e-14) scale(1.9384, 1.9384)"
-          >
-            <rect id="map-rect" x={0} y={0} width={this.state.w} height={this.state.h}></rect>
-            {/* {data.map((feature) => {
-              console.log(feature)
-              return <path className="country" id={"country" + feature.properties.iso_a3}
-              d={this.path(feature)}/>
-            })} */}
+          <g id="map">
+            <rect id="map-rect" x={0} y={0} width={this.state.w} height={this.state.h} />
           </g>
         </svg>
       )

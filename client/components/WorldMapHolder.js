@@ -8,13 +8,13 @@ class WorldMapHolder extends Component {
 
     this.state = {
       width: "100vw",
-      height: `${window.innerHeight - 158}px`
+      height: "100vh"
     }
   }
   render() {
     return (
       <div ref="anchor" id="map-holder"
-      style={{width: "100vw", height: this.state.height}}
+      style={{width: this.state.width, height: this.state.height}}
       >
         <WorldMap width={this.state.width} height={this.state.height} />
       </div>
