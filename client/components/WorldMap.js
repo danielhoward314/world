@@ -1,5 +1,6 @@
 import React, {Component} from 'react'
 import * as d3 from 'd3'
+import {employees} from '../../public/seed'
 
 
 class WorldMap extends Component {
@@ -8,7 +9,10 @@ class WorldMap extends Component {
     this.state = {
       w: 3000,
       h: 1500,
-      refMounted: false
+      refMounted: false,
+      visitedCountries: [],
+      country: '',
+      emplByCountry: []
     }
     this.minZoom = null
     this.maxZoom = null
@@ -16,10 +20,30 @@ class WorldMap extends Component {
     this.initiateZoom = this.initiateZoom.bind(this)
     this.getTextBox = this.getTextBox.bind(this)
     this.path = this.path.bind(this)
+    this.handleChange = this.handleChange.bind(this)
+    this.handleSubmit = this.handleSubmit.bind(this)
   }
 
   componentDidUpdate() {
     d3.zoom().on("zoom", this.zoomed)
+  }
+
+  handleChange(event) {
+    let targProp = event.target.name
+    let targVal = event.target.value
+    this.setState((state) => {
+      return {[targProp]: targVal}
+    })
+  }
+
+  handleSubmit(event) {
+    event.preventDefault()
+    const emplByCountry = employees.filter((employee) => {
+      return employee.country === this.state.country
+    })
+    this.setState((state) => {
+      return {...state, emplByCountry}
+    })
   }
 
   // Create function to apply zoom to <g> (group of country paths)
@@ -89,17 +113,14 @@ class WorldMap extends Component {
             return "country" + d.properties.iso_a3;
           })
           .attr("class", "country")
-          .on("mouseover", function(d, i) {
-            d3.select("#countryLabel" + d.properties.iso_a3).style("display", "block");
-        })
-        .on("mouseout", function(d, i) {
-            d3.select("#countryLabel" + d.properties.iso_a3).style("display", "none");
-        })
-        // add an onclick action to zoom into clicked country
-        .on("click", function(d, i) {
-            d3.selectAll(".country").classed("country-on", false);
-            d3.select(this).classed("country-on", true);
-        })
+          .on("click", (d) => {
+            this.setState((prevState) =>
+              ({ visitedCountries: [...prevState.visitedCountries, {
+                name: d.properties.name,
+                population: d.properties.pop_est
+              }] })
+              )
+          })
     })
 
     d3.select(window).on("resize",() => {
@@ -113,14 +134,35 @@ class WorldMap extends Component {
   }
 
   render() {
+    console.log(this.state)
+    console.log(employees)
       return (
-        <svg id="map-svg" style={{width: (this.props.width),
+        <div>
+          <div id="user-info">
+            <h1>Welcome to the world map, click to get data for countries you've visited</h1>
+            <form onSubmit={ this.handleSubmit }>
+              <label> Country:
+                <input type="text" name="country" value={ this.state.country } onChange={this.handleChange} />
+              </label>
+              <button type="submit">Search Employee By Country</button>
+            </form>
+            {this.state.visitedCountries.length ? <ul>{this.state.visitedCountries.map((country, idx) => {
+              return (<li key={idx}>{country.name}
+                      <ul><li>Population: {country.population}</li></ul>
+                      </li>)
+            })}</ul> : null}
+            {this.state.emplByCountry.length ? <ul>{this.state.emplByCountry.map((employee, idx) => {
+              return (<li key={idx}>{employee.full_name}</li>)
+            })}</ul> : null}
+          </div>
+          <svg id="map-svg" style={{width: (this.props.width),
         height: (this.props.height),
         color: "rgba(0,0,0,0)"}}>
           <g id="map">
             <rect id="map-rect" x={0} y={0} width={this.state.w} height={this.state.h} />
           </g>
         </svg>
+        </div>
       )
   }
 }

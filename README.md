@@ -2,7 +2,7 @@
 
 In your terminal, enter `git clone https://github.com/danielhoward314/world.git`
 
-
+Run `npm install` in your terminal
 
 `npm run start-dev` will make great things happen!
 
